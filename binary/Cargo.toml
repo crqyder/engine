@@ -1,0 +1,12 @@
+[package]
+name = "binary"
+description = "Provides utilities to serialize and deserialize data in Binary format"
+authors = ["Crayder <crqyder@hotmail.com>"]
+version = "1.0.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+byteorder = "1.5.0"
+bytes = { git = "https://github.com/stcraft/bytes" }
