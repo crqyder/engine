@@ -3,8 +3,8 @@ use std::fmt::Debug;
 pub mod impls;
 pub use impls::*;
 
-pub mod bytes;
-pub use bytes::*;
+pub mod buffer;
+pub use buffer::*;
 
 pub mod order;
 pub use order::*;

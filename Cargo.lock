@@ -5,18 +5,16 @@ version = 3
 [[package]]
 name = "binary"
 version = "1.0.0"
+
+[[package]]
+name = "engine_api"
+version = "1.0.0"
+source = "git+https://github.com/stcraft/engine_api#af0f2882113f9b3cb9a44cfe51b74e588b7ecf51"
+
+[[package]]
+name = "nbt"
+version = "1.0.0"
 dependencies = [
- "byteorder",
- "bytes",
+ "binary",
+ "engine_api",
 ]
-
-[[package]]
-name = "byteorder"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
-
-[[package]]
-name = "bytes"
-version = "1.6.0"
-source = "git+https://github.com/stcraft/bytes#d1af814605fe6d67d45d93bb27f2bb49dbd5d5df"

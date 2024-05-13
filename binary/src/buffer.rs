@@ -194,3 +194,22 @@ mod tests {
         assert_eq!(buffer.offset(), 0);
     }
 }
+
+impl From<Vec<u8>> for Buffer {
+    fn from(mut value: Vec<u8>) -> Self {
+        let cap = value.capacity();
+        let len = value.len();
+        let ptr = value.as_mut_ptr();
+        let layout = Layout::from_size_align(cap, 1).unwrap();
+
+        std::mem::forget(value);
+
+        Buffer {
+            layout,
+            ptr,
+            cap,
+            len,
+            offset: 0,
+        }
+    }
+}

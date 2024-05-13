@@ -1,0 +1,10 @@
+[package]
+name = "nbt"
+description = "Library to read and write the Named Binary Tag (NBT) format developed by Mojang in Rust"
+authors = ["Kalcor"]
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+binary = { path = "../binary" }
+engine_api = { git = "https://github.com/stcraft/engine_api" }
