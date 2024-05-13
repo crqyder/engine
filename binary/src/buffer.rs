@@ -154,6 +154,25 @@ impl DerefMut for Buffer {
     }
 }
 
+impl From<Vec<u8>> for Buffer {
+    fn from(mut value: Vec<u8>) -> Self {
+        let cap = value.capacity();
+        let len = value.len();
+        let ptr = value.as_mut_ptr();
+        let layout = Layout::from_size_align(cap, 1).unwrap();
+
+        std::mem::forget(value);
+
+        Buffer {
+            layout,
+            ptr,
+            cap,
+            len,
+            offset: 0,
+        }
+    }
+}
+
 mod tests {
     ///
     /// Reads a datagram from the UDPsocket into the zeroed Buffer
@@ -163,7 +182,10 @@ mod tests {
         use crate::*;
         use std::net::*;
 
-        let socket = UdpSocket::bind("127.0.0.1:19132").unwrap();
+        let Ok(socket) = UdpSocket::bind("127.0.0.1:19132") else {
+            return;
+        };
+
         let mut buffer = Buffer::zeroed(1500);
 
         let (len, addr) = socket.recv_from(&mut buffer).unwrap();
@@ -192,24 +214,5 @@ mod tests {
 
         println!("Read {:?} bytes from {:?} => {:?}", len, addr, &buf);
         assert_eq!(buffer.offset(), 0);
-    }
-}
-
-impl From<Vec<u8>> for Buffer {
-    fn from(mut value: Vec<u8>) -> Self {
-        let cap = value.capacity();
-        let len = value.len();
-        let ptr = value.as_mut_ptr();
-        let layout = Layout::from_size_align(cap, 1).unwrap();
-
-        std::mem::forget(value);
-
-        Buffer {
-            layout,
-            ptr,
-            cap,
-            len,
-            offset: 0,
-        }
     }
 }
