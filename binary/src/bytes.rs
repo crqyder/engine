@@ -1,84 +1,112 @@
-use std::{alloc, ptr};
+use std::{
+    alloc::{self, Layout},
+    ops::{Deref, DerefMut},
+    ptr,
+};
 
+/// Buffer is an implementation of fast and zero overhead Buffer which
+/// can be used for serializing and deserializing binary datatypes over
+/// the wire with support for simultaneous reading and writing.
 pub struct Buffer {
+    layout: Layout,
     ptr: *mut u8,
+
     cap: usize,
     len: usize,
     offset: usize,
-    owner: bool,
 }
 
 impl Buffer {
+    /// Creates and returns a new Buffer of the specified capacity
     pub fn new(cap: usize) -> Self {
-        let ptr =
-            unsafe { alloc::alloc(alloc::Layout::from_size_align_unchecked(cap, 1)) as *mut u8 };
+        let layout = unsafe { alloc::Layout::from_size_align_unchecked(cap, 1) };
+        let ptr = unsafe { alloc::alloc(layout) as *mut u8 };
 
         Buffer {
+            layout,
             ptr,
             cap,
             len: 0,
             offset: 0,
-            owner: true,
         }
     }
 
+    /// Creates and returns a new Buffer of the specified capacity and also
+    /// fills this buffer with zeroed values.
+    pub fn zeroed(cap: usize) -> Self {
+        let layout = unsafe { alloc::Layout::from_size_align_unchecked(cap, 1) };
+        let ptr = unsafe { alloc::alloc_zeroed(layout) as *mut u8 };
+
+        Buffer {
+            layout,
+            ptr,
+            cap,
+            len: cap,
+            offset: 0,
+        }
+    }
+
+    /// Returns the capacity of the buffer
     pub fn capacity(&self) -> usize {
         self.cap
     }
 
+    /// Returns the number of bytes written to the buffer
     pub fn length(&self) -> usize {
         self.len
     }
 
+    /// Returns the current position of the cursor within the buffer
     pub fn offset(&self) -> usize {
         self.offset
     }
 
+    /// Returns the number of bytes left to be read from this buffer
     pub fn remaining(&self) -> usize {
         self.len - self.offset
     }
 
+    /// Returns whether the buffer has any bytes remaining to be read
     pub fn has_remaining(&self) -> bool {
         (self.len - self.offset) > 0
     }
 
+    /// Returns the number of bytes that can be written to the buffer
     pub fn remaining_mut(&self) -> usize {
         self.cap - self.len
     }
 
+    /// Returns whether more bytes can be written to this buffer
     pub fn has_remaining_mut(&self) -> bool {
         (self.cap - self.len) > 0
     }
 
-    pub fn split_at(&mut self, index: usize) -> Buffer {
-        assert!(index <= (self.cap - 1), "index out of bounds");
-
-        let cap = self.cap - index;
-        let mut len = 0;
-
-        if (self.len - 1) >= index {
-            len = self.len - index;
-            self.len = index;
+    /// Advances the cursor's position by the provided offset to skip
+    /// reading the provided number of bytes.
+    pub fn advance(&mut self, n: usize) -> Option<()> {
+        if self.remaining() < n {
+            return None;
         }
 
-        self.cap = index;
-        self.offset = 0;
+        self.offset += n;
+        Some(())
+    }
 
-        let ptr = unsafe { self.ptr.add(index) };
+    /// Reads n bytes from the current offset and returns a reference to it. Optionally
+    /// advances n bytes from the cursor if specified.
+    pub fn get(&mut self, n: usize, advance: bool) -> &[u8] {
+        let start = self.offset;
+        let end = self.offset + n;
 
-        Buffer {
-            ptr,
-            cap,
-            len,
-            offset: 0,
-            owner: false,
+        if advance {
+            self.offset += n;
         }
+
+        &self[start..end]
     }
 
-    pub fn get_data(&self) -> &[u8] {
-        unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
-    }
-
+    /// Reads the data from the buffer into the provided slice and returns
+    /// the number of bytes read.
     pub fn read(&mut self, buf: &mut [u8]) -> usize {
         let remaining = self.remaining();
         let size = buf.len().min(remaining);
@@ -91,6 +119,8 @@ impl Buffer {
         size
     }
 
+    /// Writes the provided slice into the buffer and returns the number of bytes
+    /// written.
     pub fn write(&mut self, buf: &[u8]) -> usize {
         let remaining = self.remaining_mut();
         let size = buf.len().min(remaining);
@@ -106,9 +136,61 @@ impl Buffer {
 
 impl Drop for Buffer {
     fn drop(&mut self) {
-        if self.owner {
-            let layout = alloc::Layout::from_size_align(self.cap, 1).unwrap();
-            unsafe { alloc::dealloc(self.ptr, layout) };
-        }
+        unsafe { alloc::dealloc(self.ptr, self.layout) };
+    }
+}
+
+impl Deref for Buffer {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { std::slice::from_raw_parts(self.ptr, self.len) }
+    }
+}
+
+impl DerefMut for Buffer {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { std::slice::from_raw_parts_mut(self.ptr, self.len) }
+    }
+}
+
+mod tests {
+    ///
+    /// Reads a datagram from the UDPsocket into the zeroed Buffer
+    ///
+    #[test]
+    pub fn udp_socket_read() {
+        use crate::*;
+        use std::net::*;
+
+        let socket = UdpSocket::bind("127.0.0.1:19132").unwrap();
+        let mut buffer = Buffer::zeroed(1500);
+
+        let (len, addr) = socket.recv_from(&mut buffer).unwrap();
+
+        println!(
+            "Read {:?} bytes from {:?} => {:?}",
+            len,
+            addr,
+            &buffer[..len]
+        );
+    }
+
+    ///
+    /// Gets a reference from the buffer without advancing it
+    ///
+    #[test]
+    pub fn buffer_get_no_adv() {
+        use crate::*;
+        use std::net::*;
+
+        let socket = UdpSocket::bind("127.0.0.1:19132").unwrap();
+        let mut buffer = Buffer::zeroed(1500);
+
+        let (len, addr) = socket.recv_from(&mut buffer).unwrap();
+        let buf = buffer.get(len, false);
+
+        println!("Read {:?} bytes from {:?} => {:?}", len, addr, &buf);
+        assert_eq!(buffer.offset(), 0);
     }
 }
