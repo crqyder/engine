@@ -1,25 +1,25 @@
-use crate::{Binary, Buffer, ByteOrder, VarI32, VarU32, I16, I32, U16, U32};
+use std::io::Cursor;
+
+use bytes::{Bytes, BytesMut};
+
+use crate::{Binary, ByteOrder, I16, I32, U16, U32, V32, W32};
 
 /// Prefix trait is implemented for those integral and numerical types that can serialize the
 /// length of a prefixed datatype such as strings, arrays, etc.
-pub trait Prefix: Binary {
-    fn encode(len: usize, buf: &mut Buffer);
-    fn decode(buf: &mut Buffer) -> Option<usize>;
+pub trait Prefix<'a>: Binary<'a> {
+    fn encode(len: usize, buf: &mut BytesMut);
+    fn decode(buf: &mut Cursor<&'a Bytes>) -> Option<usize>;
 }
 
-/*
-    This macro implements the Prefix trait for the specified numeric type that can be converted
-    into and from usize.
-*/
-macro_rules! impl_prefix_for {
+macro_rules! impl_prefix {
     ($wrapper:ident, <$($gen:ident: $gen_constraint:ident),*>, $ty:ty) => {
-        impl<$($gen: $gen_constraint),*> Prefix for $wrapper<$($gen),*> {
-            fn encode(prefix: usize, buf: &mut Buffer) {
+        impl<'a, $($gen: $gen_constraint),*> Prefix<'a> for $wrapper<$($gen),*> {
+            fn encode(prefix: usize, buf: &mut BytesMut) {
                 let val = prefix as $ty;
                 Self::new(val).serialize(buf);
             }
 
-            fn decode(buf: &mut Buffer) -> Option<usize> {
+            fn decode(buf: &mut Cursor<&'a Bytes>) -> Option<usize> {
                 let val = Self::deserialize(buf)?.get();
                 Some(val as usize)
             }
@@ -27,9 +27,9 @@ macro_rules! impl_prefix_for {
     };
 }
 
-impl_prefix_for!(U16, <E: ByteOrder>, u16);
-impl_prefix_for!(I16, <E: ByteOrder>, i16);
-impl_prefix_for!(U32, <E: ByteOrder>, u32);
-impl_prefix_for!(I32, <E: ByteOrder>, i32);
-impl_prefix_for!(VarU32, <>, u32);
-impl_prefix_for!(VarI32, <>, i32);
+impl_prefix!(U16, <E: ByteOrder>, u16);
+impl_prefix!(I16, <E: ByteOrder>, i16);
+impl_prefix!(U32, <E: ByteOrder>, u32);
+impl_prefix!(I32, <E: ByteOrder>, i32);
+impl_prefix!(W32, <>, u32);
+impl_prefix!(V32, <>, i32);

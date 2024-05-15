@@ -1,4 +1,4 @@
-use binary::{Binary, Buffer, CString, VarI32, VarI64, VarU32, I32, I64, LE, U16};
+use binary::{Binary, Buffer, CString, I32, I64, LE, U16, V32, V64, W32};
 
 /// There are two versions of NBT encoding that is used in Minecraft: Bedrock Edition. The first
 /// one is called the NetworkLittleEndian encoding which is used mostly over the network and the
@@ -27,31 +27,31 @@ pub struct LittleEndian;
 
 impl Encoding for NetworkLittleEndian {
     fn read_int(buf: &mut Buffer) -> Option<i32> {
-        let val = VarI32::deserialize(buf)?.get();
+        let val = V32::deserialize(buf)?.get();
         Some(val)
     }
 
     fn write_int(val: i32, buf: &mut Buffer) {
-        VarI32::new(val).serialize(buf);
+        V32::new(val).serialize(buf);
     }
 
     fn read_long(buf: &mut Buffer) -> Option<i64> {
-        let val = VarI64::deserialize(buf)?.get();
+        let val = V64::deserialize(buf)?.get();
         Some(val)
     }
 
     fn write_long(val: i64, buf: &mut Buffer) {
-        VarI64::new(val).serialize(buf);
+        V64::new(val).serialize(buf);
     }
 
     fn read_string(buf: &mut Buffer) -> Option<String> {
-        let val = CString::<VarU32>::deserialize(buf)?.get();
+        let val = CString::<W32>::deserialize(buf)?.get();
         Some(val)
     }
 
     fn write_string(val: &str, buf: &mut Buffer) {
         let len = val.len() as u32;
-        VarU32::new(len).serialize(buf);
+        W32::new(len).serialize(buf);
 
         buf.write(&val.as_bytes());
     }

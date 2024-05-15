@@ -13,7 +13,7 @@ impl<E: Encoding> Binary for RootNBT<E> {
         encode::<E>(&self.val, buf);
     }
 
-    fn deserialize(buf: &mut Buffer) -> Option<Self> {
+    fn deserialize(buf: &'a mut Buffer) -> Option<Self> {
         let tag = deserialize_tag(buf)?;
         E::read_string(buf)?;
         let val = decode::<E>(tag, buf)?;
