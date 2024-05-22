@@ -1,18 +1,14 @@
-use std::io::Cursor;
-
-use bytes::{Bytes, BytesMut};
-
-use crate::{generate, Binary, U8};
+use crate::{generate, Binary, Buffer, U8};
 
 generate!(Bool, <>, bool);
 
-impl Binary<'_> for Bool {
-    fn serialize(&self, buf: &mut BytesMut) {
+impl Binary for Bool {
+    fn serialize(&self, buf: &mut Buffer) {
         let val = if *self.as_ref() { 0x01 } else { 0x00 };
         U8::new(val).serialize(buf);
     }
 
-    fn deserialize(buf: &mut Cursor<&Bytes>) -> Option<Self> {
+    fn deserialize(buf: &mut Buffer) -> Option<Self> {
         let val = U8::deserialize(buf)?;
         let b = match val.get() {
             0x01 => true,

@@ -1,6 +1,4 @@
-use crate::{generate, Binary, ByteOrder};
-use bytes::{Bytes, BytesMut};
-use std::io::{Cursor, Read, Write};
+use crate::{generate, Binary, Buffer, ByteOrder};
 
 generate!(U8, <>, u8);
 generate!(I8, <>, i8);
@@ -20,20 +18,18 @@ generate!(V64, <>, i64);
 
 macro_rules! impl_unordered {
     ($wrapper:ident, $ty:ty, $n:expr) => {
-        impl Binary<'_> for $wrapper {
-            fn serialize(&self, buf: &mut BytesMut) {
+        impl Binary for $wrapper {
+            fn serialize(&self, buf: &mut Buffer) {
                 let val = self.as_ref();
                 buf.write(&val.to_le_bytes());
             }
 
-            fn deserialize(buf: &mut Cursor<&Bytes>) -> Option<Self> {
+            fn deserialize(buf: &mut Buffer) -> Option<Self> {
                 let mut bytes = [0u8; $n];
 
-                if let Ok(len) = buf.read(&mut bytes) {
-                    if len == $n {
-                        let val = <$ty>::from_le_bytes(bytes);
-                        return Some(Self::new(val));
-                    }
+                if buf.read(&mut bytes) == $n {
+                    let val = <$ty>::from_le_bytes(bytes);
+                    return Some(Self::new(val));
                 };
 
                 None
@@ -47,12 +43,12 @@ impl_unordered!(I8, i8, 1);
 
 macro_rules! impl_ordered {
     ($wrapper:ident, $ty:ty, $read_method:ident, $write_method:ident) => {
-        impl<E: ByteOrder> Binary<'_> for $wrapper<E> {
-            fn serialize(&self, buf: &mut BytesMut) {
+        impl<E: ByteOrder> Binary for $wrapper<E> {
+            fn serialize(&self, buf: &mut Buffer) {
                 E::$write_method(*self.as_ref(), buf)
             }
 
-            fn deserialize(buf: &mut Cursor<&Bytes>) -> Option<Self> {
+            fn deserialize(buf: &mut Buffer) -> Option<Self> {
                 let val = E::$read_method(buf)?;
                 Some(Self::new(val))
             }
@@ -70,8 +66,8 @@ impl_ordered!(I64, i64, read_i64, write_i64);
 impl_ordered!(F32, f32, read_f32, write_f32);
 impl_ordered!(F64, f64, read_f64, write_f64);
 
-impl Binary<'_> for W32 {
-    fn serialize(&self, buf: &mut BytesMut) {
+impl Binary for W32 {
+    fn serialize(&self, buf: &mut Buffer) {
         let mut u = *self.as_ref();
 
         while u >= 0x80 {
@@ -82,7 +78,7 @@ impl Binary<'_> for W32 {
         U8::new(u as u8).serialize(buf);
     }
 
-    fn deserialize(buf: &mut Cursor<&Bytes>) -> Option<Self> {
+    fn deserialize(buf: &mut Buffer) -> Option<Self> {
         let mut v: u32 = 0;
 
         for i in (0..35).step_by(7) {
@@ -98,8 +94,8 @@ impl Binary<'_> for W32 {
     }
 }
 
-impl Binary<'_> for V32 {
-    fn serialize(&self, buf: &mut BytesMut) {
+impl Binary for V32 {
+    fn serialize(&self, buf: &mut Buffer) {
         let u = *self.as_ref();
         let mut ux = (u as u32) << 1;
 
@@ -115,7 +111,7 @@ impl Binary<'_> for V32 {
         U8::new(ux as u8).serialize(buf);
     }
 
-    fn deserialize(buf: &mut Cursor<&Bytes>) -> Option<Self> {
+    fn deserialize(buf: &mut Buffer) -> Option<Self> {
         let mut ux: u32 = 0;
 
         for i in (0..35).step_by(7) {
@@ -136,8 +132,8 @@ impl Binary<'_> for V32 {
     }
 }
 
-impl Binary<'_> for W64 {
-    fn serialize(&self, buf: &mut BytesMut) {
+impl Binary for W64 {
+    fn serialize(&self, buf: &mut Buffer) {
         let mut u = *self.as_ref();
 
         while u >= 0x80 {
@@ -148,7 +144,7 @@ impl Binary<'_> for W64 {
         U8::new(u as u8).serialize(buf);
     }
 
-    fn deserialize(buf: &mut Cursor<&Bytes>) -> Option<Self> {
+    fn deserialize(buf: &mut Buffer) -> Option<Self> {
         let mut v: u64 = 0;
 
         for i in (0..70).step_by(7) {
@@ -164,8 +160,8 @@ impl Binary<'_> for W64 {
     }
 }
 
-impl Binary<'_> for V64 {
-    fn serialize(&self, buf: &mut BytesMut) {
+impl Binary for V64 {
+    fn serialize(&self, buf: &mut Buffer) {
         let u = *self.as_ref();
         let mut ux = (u as u32) << 1;
 
@@ -181,7 +177,7 @@ impl Binary<'_> for V64 {
         U8::new(ux as u8).serialize(buf);
     }
 
-    fn deserialize(buf: &mut Cursor<&Bytes>) -> Option<Self> {
+    fn deserialize(buf: &mut Buffer) -> Option<Self> {
         let mut ux: u64 = 0;
 
         for i in (0..70).step_by(7) {

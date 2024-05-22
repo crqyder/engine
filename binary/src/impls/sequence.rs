@@ -1,15 +1,10 @@
-use std::io::{Cursor, Write};
-
-use bytes::{Bytes, BytesMut};
-
-use crate::{generate, Binary, Prefix};
+use crate::{generate, Binary, Buffer, Prefix};
 
 generate!(Array, <P: Prefix, B: Binary>, Vec<B>);
-generate!(Slice, <P: Prefix, B: Binary>, &'a [B], 'a);
-generate!(RefBytes, <P: Prefix>, &'a [u8], 'a);
+generate!(RemBuf, <>, Vec<u8>);
 
-impl<'a, P: Prefix<'a>, B: Binary<'a>> Binary<'a> for Array<P, B> {
-    fn serialize(&self, buf: &mut BytesMut) {
+impl<P: Prefix, B: Binary> Binary for Array<P, B> {
+    fn serialize(&self, buf: &mut Buffer) {
         P::encode(self.len(), buf);
 
         for val in self.iter() {
@@ -17,7 +12,7 @@ impl<'a, P: Prefix<'a>, B: Binary<'a>> Binary<'a> for Array<P, B> {
         }
     }
 
-    fn deserialize(buf: &mut Cursor<&'a Bytes>) -> Option<Self> {
+    fn deserialize(buf: &mut Buffer) -> Option<Self> {
         let len = P::decode(buf)?;
         let mut vec = Vec::with_capacity(len);
 
@@ -29,13 +24,13 @@ impl<'a, P: Prefix<'a>, B: Binary<'a>> Binary<'a> for Array<P, B> {
     }
 }
 
-impl<'a, P: Prefix<'a>> Binary<'a> for RefBytes<'a, P> {
-    fn serialize(&self, buf: &mut BytesMut) {
+impl<P: Prefix> Binary for RemBuf<P> {
+    fn serialize(&self, buf: &mut Buffer) {
         P::encode(self.len(), buf);
         buf.write(&self);
     }
 
-    fn deserialize(buf: &mut Cursor<&'a Bytes>) -> Option<Self> {
+    fn deserialize(buf: &mut Buffer) -> Option<Self> {
         let len = P::decode(buf)?;
         let start = buf.position() as usize;
         let end = start + len;

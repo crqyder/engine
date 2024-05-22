@@ -1,6 +1,4 @@
-#[allow(hidden_glob_reexports)]
-use bytes::{Bytes, BytesMut};
-use std::{fmt::Debug, io::Cursor};
+use std::fmt::Debug;
 
 pub mod order;
 pub use order::*;
@@ -11,9 +9,12 @@ pub use prefix::*;
 pub mod impls;
 pub use impls::*;
 
+pub mod buffer;
+pub use buffer::*;
+
 /// Binary represents a trait that is implemented for all the objects that can be serialized
 /// and deserialized over the network.
-pub trait Binary<'a>: Sized + Debug {
-    fn serialize(&self, buf: &mut BytesMut);
-    fn deserialize(buf: &mut Cursor<&'a Bytes>) -> Option<Self>;
+pub trait Binary: Sized + Debug {
+    fn serialize(&self, buf: &mut Buffer);
+    fn deserialize(buf: &mut Buffer) -> Option<Self>;
 }
